@@ -158,16 +158,242 @@ const int ps2_to_usb_map[PS2_KEYMAP_SIZE] =
 #define SHIFT_L   0x04
 #define SHIFT_R   0x08
 #define ALTGR     0x10
-static int prev_c = 0;
-static uint8_t prev_state2 =0;
+
+#define NUM_MODES 5
+#define NO_MODE 0
+#define DEGRAMATYZER 1
+#define HODOR 2
+#define REVERSE 3
+#define TOURETTE 4
+static int mode = 0;
+
+void no_mode(int c, uint8_t modifiers);
+void degramatyzer(int c, uint8_t modifiers);
+void hodorifier(int c, uint8_t modifiers);
+void reverser(int c, uint8_t modifiers);
+void touretter(int c, uint8_t modifiers);
+
+void (*modes[NUM_MODES])(int, uint8_t) = {
+/*modes[NO_MODE]      = */no_mode,
+/*modes[DEGRAMATYZER] = */degramatyzer,
+/*modes[HODOR]        = */hodorifier,
+/*modes[REVERSE]      = */reverser,
+/*modes[TOURETTE]     = */touretter
+};
+
+
+void no_mode(int c, uint8_t modifiers)
+{
+	Keyboard.set_key1(c);
+	Keyboard.send_now();
+}
+
+static int     prev_c         = 0;
+static uint8_t prev_modifiers = 0;
+void degramatyzer(int c, uint8_t modifiers)
+{
+	if(c == KEY_U) { //u na ó
+		Keyboard.set_modifier(modifiers | MODIFIERKEY_RIGHT_ALT);
+		Keyboard.set_key1(KEY_O);
+		Keyboard.send_now();
+		Keyboard.set_modifier(modifiers);
+		Keyboard.send_now();
+	} else if(c == KEY_O && (modifiers & MODIFIERKEY_RIGHT_ALT)) { //u na ó
+		Keyboard.set_modifier(modifiers & ~MODIFIERKEY_RIGHT_ALT);
+		Keyboard.set_key1(KEY_U);
+		Keyboard.send_now();
+		Keyboard.set_modifier(modifiers);
+		Keyboard.send_now();
+	} else if(prev_c == KEY_R && c == KEY_Z) { //rz na ż
+		Keyboard.set_modifier(0);
+		Keyboard.set_key1(KEY_BACKSPACE);
+		Keyboard.send_now();
+		Keyboard.set_modifier(prev_modifiers & (MODIFIERKEY_LEFT_SHIFT | MODIFIERKEY_RIGHT_SHIFT) | MODIFIERKEY_RIGHT_ALT);
+		Keyboard.set_key1(KEY_Z);
+		Keyboard.send_now();
+		Keyboard.set_modifier(modifiers);
+		Keyboard.send_now();
+	} else if(prev_c == KEY_C && c == KEY_H) { //ch na h
+		Keyboard.set_modifier(0);
+		Keyboard.set_key1(KEY_BACKSPACE);
+		Keyboard.send_now();
+		Keyboard.set_modifier(prev_modifiers);
+		Keyboard.set_key1(KEY_H);
+		Keyboard.send_now();
+		Keyboard.set_modifier(modifiers);
+		Keyboard.send_now();
+	} else if(prev_c != KEY_C && c == KEY_H) {// h na ch
+		Keyboard.set_modifier(modifiers);
+		Keyboard.set_key1(KEY_C);
+		Keyboard.send_now();
+		Keyboard.set_modifier(modifiers & ~MODIFIERKEY_RIGHT_SHIFT & ~MODIFIERKEY_LEFT_SHIFT);
+		Keyboard.set_key1(KEY_H);
+		Keyboard.send_now();
+		Keyboard.set_modifier(modifiers);
+		Keyboard.send_now();
+	} else if(c == KEY_Z && (modifiers & MODIFIERKEY_RIGHT_ALT)) { //ż na rz
+		Keyboard.set_modifier(modifiers & ~MODIFIERKEY_RIGHT_ALT);
+		Keyboard.set_key1(KEY_R);
+		Keyboard.send_now();
+		Keyboard.set_modifier(modifiers & ~MODIFIERKEY_RIGHT_ALT & ~MODIFIERKEY_RIGHT_SHIFT & ~MODIFIERKEY_LEFT_SHIFT);
+		Keyboard.set_key1(KEY_Z);
+		Keyboard.send_now();
+		Keyboard.set_modifier(modifiers);
+		Keyboard.send_now();
+	} else if(c == KEY_A && (modifiers & MODIFIERKEY_RIGHT_ALT)) { // ą na om
+		Keyboard.set_modifier(modifiers & ~MODIFIERKEY_RIGHT_ALT);
+		Keyboard.set_key1(KEY_O);
+		Keyboard.send_now();
+		Keyboard.set_modifier(modifiers & ~MODIFIERKEY_RIGHT_ALT & ~MODIFIERKEY_RIGHT_SHIFT & ~MODIFIERKEY_LEFT_SHIFT);
+		Keyboard.set_key1(KEY_M);
+		Keyboard.send_now();
+		Keyboard.set_modifier(modifiers);
+		Keyboard.send_now();
+	} else if(prev_c == KEY_O && c == KEY_M) { //om na ą
+		Keyboard.set_modifier(0);
+		Keyboard.set_key1(KEY_BACKSPACE);
+		Keyboard.send_now();
+		Keyboard.set_modifier(prev_modifiers | MODIFIERKEY_RIGHT_ALT);
+		Keyboard.set_key1(KEY_A);
+		Keyboard.send_now();
+		Keyboard.set_modifier(modifiers);
+		Keyboard.send_now();
+	} else {
+		Keyboard.set_key1(c);
+		Keyboard.send_now();
+	}
+	
+	prev_c         = c;
+	prev_modifiers = modifiers;
+}
+
+#define BUFFER_SIZE 32
+static int letter_counter = 0;
+static int letter_buffer[BUFFER_SIZE];
+static int modifiers_buffer[BUFFER_SIZE];
+const int hodor[5] = {KEY_H,KEY_O,KEY_D,KEY_O,KEY_R};
+
+void hodorifier(int c, uint8_t modifiers)
+{
+	if( c == KEY_BACKSPACE) {
+		if( --letter_counter < 0)
+			letter_counter = 0;
+		
+		Keyboard.set_modifier(modifiers);
+		Keyboard.set_key1(c);
+		Keyboard.send_now();
+	} else if(c < KEY_A || c > KEY_0) {
+		if(letter_counter > 0) {
+			for(;letter_counter <= 5; letter_counter++) {
+				Keyboard.set_modifier(modifiers & ~MODIFIERKEY_RIGHT_ALT);
+				Keyboard.set_key1(hodor[letter_counter]);
+				Keyboard.send_now();
+			}
+		}
+		Keyboard.set_key1(c);
+		Keyboard.send_now();
+		letter_counter = 0;
+	} else {
+		if(letter_counter <= 5) {
+			Keyboard.set_modifier(modifiers & ~MODIFIERKEY_RIGHT_ALT);
+			Keyboard.set_key1(hodor[letter_counter]);
+			Keyboard.send_now();
+			letter_counter++;
+		}
+	}
+}
+
+void reverser(int c, uint8_t modifiers)
+{
+	if( c == KEY_BACKSPACE) {
+		if( --letter_counter < 0)
+			letter_counter = 0;
+		
+		Keyboard.set_modifier(modifiers);
+		Keyboard.set_key1(c);
+		Keyboard.send_now();
+	} else if(c < KEY_A || c > KEY_0) {
+		Keyboard.set_modifier(0);
+		for(int i = 0; i < letter_counter; i++){
+			Keyboard.press(KEY_BACKSPACE);
+			Keyboard.release(KEY_BACKSPACE);
+		}
+		for(int i = letter_counter - 1; i >= 0; i--){
+			Keyboard.set_modifier(modifiers_buffer[letter_counter - i -1] & (MODIFIERKEY_LEFT_SHIFT | MODIFIERKEY_RIGHT_SHIFT) | 
+								  modifiers_buffer[i] & ~MODIFIERKEY_LEFT_SHIFT & ~MODIFIERKEY_RIGHT_SHIFT);
+			Keyboard.set_key1(letter_buffer[i]);
+			Keyboard.send_now();
+		}
+		Keyboard.set_modifier(modifiers);
+		Keyboard.set_key1(c);
+		Keyboard.send_now();
+		letter_counter = 0;
+	} else {
+		if(letter_counter <= BUFFER_SIZE) {
+			letter_buffer[letter_counter] = c;
+			modifiers_buffer[letter_counter] = modifiers;
+			letter_counter++;
+			
+			Keyboard.set_modifier(modifiers);
+			Keyboard.set_key1(c);
+			Keyboard.send_now();
+		}
+	}
+}
+
+#define DICTIONARY_SIZE 16
+#define WORD_SIZE 8
+const int tourette_dictionary[DICTIONARY_SIZE][WORD_SIZE] = {
+    {0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0},
+    {KEY_C,KEY_H,KEY_U,KEY_J,KEY_1,0,0,0},
+    {KEY_D,KEY_U,KEY_P,KEY_A,KEY_1,0,0,0},
+    {KEY_K,KEY_U,KEY_R,KEY_W,KEY_A,KEY_1,0,0},
+    {KEY_C,KEY_Y,KEY_C,KEY_K,KEY_I,KEY_1,0,0},
+    {KEY_J,KEY_E,KEY_B,KEY_A,KEY_C,KEY_1,0,0},
+    {KEY_K,KEY_U,KEY_T,KEY_A,KEY_S,KEY_1,0,0},
+    {KEY_S,KEY_Z,KEY_M,KEY_A,KEY_T,KEY_A,KEY_1,0},
+    {KEY_P,KEY_I,KEY_Z,KEY_D,KEY_A,KEY_1,0,0}
+};
+
+void touretter(int c, uint8_t modifiers)
+{
+	if( c == KEY_SPACE || c == KEY_ENTER || c == KEY_PERIOD || c == KEY_COMMA) {
+		Keyboard.set_modifier(0);
+		Keyboard.set_key1(KEY_SPACE);
+		Keyboard.send_now();
+		
+		int dict = random(0, DICTIONARY_SIZE);
+		Serial.println(dict);
+		for(int i = 0; tourette_dictionary[dict][i] != 0; i++) {
+			Keyboard.set_modifier(MODIFIERKEY_LEFT_SHIFT);
+			Keyboard.set_key1(tourette_dictionary[dict][i]);
+			Keyboard.send_now();
+		}
+		
+		Keyboard.set_modifier(modifiers);
+		Keyboard.set_key1(c);
+		Keyboard.send_now();
+	} else {
+		Keyboard.set_modifier(modifiers);
+		Keyboard.set_key1(c);
+		Keyboard.send_now();
+	}
+}
 
 static char get_iso8859_code(void)
 {
     static uint8_t state  =0;
-    static uint8_t state2 =0;
+    static uint8_t modifiers =0;
     uint8_t s;
     int c;
-		
+        
     while (1) {
         s = get_scan_code();
         if (!s) return 0;
@@ -178,182 +404,146 @@ static char get_iso8859_code(void)
         } else {
             if (state & BREAK) {
                 if (s == 0x12) {
-                    state2 &= ~MODIFIERKEY_LEFT_SHIFT;
-                    Keyboard.set_modifier(state2);
+                    modifiers &= ~MODIFIERKEY_LEFT_SHIFT;
+                    Keyboard.set_modifier(modifiers);
                     Keyboard.send_now(); 
                 } else if (s == 0x59) {
-                    state2 &= ~MODIFIERKEY_RIGHT_SHIFT;
-                    Keyboard.set_modifier(state2);
+                    modifiers &= ~MODIFIERKEY_RIGHT_SHIFT;
+                    Keyboard.set_modifier(modifiers);
                     Keyboard.send_now();
                 } else if (s == 0x11 && (state & MODIFIER)) {
-                    state2 &= ~MODIFIERKEY_RIGHT_ALT;
-                    Keyboard.set_modifier(state2);
+                    modifiers &= ~MODIFIERKEY_RIGHT_ALT;
+                    Keyboard.set_modifier(modifiers);
                     Keyboard.send_now();
                 } else if (s == 0x11) {
-                    state2 &= ~MODIFIERKEY_LEFT_ALT;
-                    Keyboard.set_modifier(state2);
+                    modifiers &= ~MODIFIERKEY_LEFT_ALT;
+                    Keyboard.set_modifier(modifiers);
                     Keyboard.send_now(); 
                 } else if (s == 0x14 && (state & MODIFIER)) {
-                    state2 &= ~MODIFIERKEY_RIGHT_CTRL;
-                    Keyboard.set_modifier(state2);
+                    modifiers &= ~MODIFIERKEY_RIGHT_CTRL;
+                    Keyboard.set_modifier(modifiers);
                     Keyboard.send_now();
                 } else if (s == 0x14) {
-                    state2 &= ~MODIFIERKEY_LEFT_CTRL;
-                    Keyboard.set_modifier(state2);
+                    modifiers &= ~MODIFIERKEY_LEFT_CTRL;
+                    Keyboard.set_modifier(modifiers);
                     Keyboard.send_now(); 
                 } else if (s == 0x1F && (state & MODIFIER)) {
-                    state2 &= ~MODIFIERKEY_LEFT_GUI;
-                    Keyboard.set_modifier(state2);
+                    modifiers &= ~MODIFIERKEY_LEFT_GUI;
+                    Keyboard.set_modifier(modifiers);
                     Keyboard.send_now();
                 } else if (s == 0x27 && (state & MODIFIER)) {
-                    state2 &= ~MODIFIERKEY_RIGHT_GUI;
-                    Keyboard.set_modifier(state2);
+                    modifiers &= ~MODIFIERKEY_RIGHT_GUI;
+                    Keyboard.set_modifier(modifiers);
                     Keyboard.send_now();
+                } else if (s == 0x6C && (state & MODIFIER)) {
+					Keyboard.release(KEY_HOME);
+				} else if (s == 0x69 && (state & MODIFIER)) {
+					Keyboard.release(KEY_END);
+                } else if (s == 0x7D && (state & MODIFIER)) {
+                    Keyboard.release(KEY_PAGE_UP);
+                } else if (s == 0x7A && (state & MODIFIER)) {
+                    Keyboard.release(KEY_PAGE_DOWN);
+                } else if (s ==0x75 && (state & MODIFIER)) {
+					Keyboard.release(KEY_UP);
+				} else if (s ==0x6B && (state & MODIFIER)) {
+					Keyboard.release(KEY_LEFT);
+				} else if (s ==0x72 && (state & MODIFIER)) {
+					Keyboard.release(KEY_DOWN);
+				} else if (s ==0x74 && (state & MODIFIER)) {
+					Keyboard.release(KEY_RIGHT);
+				} else if (s == 0x71 && (state & MODIFIER)) {
+                    Keyboard.release(KEY_DELETE);
+                } else if (s == 0x32 && (state & MODIFIER)) { //vol up
+                    letter_counter = 0;
+                    if(++mode >= NUM_MODES)
+                        mode = NUM_MODES - 1;
+                } else if (s == 0x21 && (state & MODIFIER)) { //vol down
+                    letter_counter = 0;
+                    if(--mode < 0)
+                        mode = 0;
                 }
-                // CTRL, ALT & WIN keys could be added
-                // but is that really worth the overhead?
                 state &= ~(BREAK | MODIFIER);
                 continue;
             }
-            if (s == 0x12) {  //left shift
-                state2 |= MODIFIERKEY_LEFT_SHIFT;
-                Keyboard.set_modifier(state2);
+            if (s == 0x12) {
+                modifiers |= MODIFIERKEY_LEFT_SHIFT;
+                Keyboard.set_modifier(modifiers);
                 Keyboard.send_now();  
                 continue;
-            } else if (s == 0x59) { //right shift
-                state2 |= MODIFIERKEY_RIGHT_SHIFT;
-                Keyboard.set_modifier(state2);
+            } else if (s == 0x59) {
+                modifiers |= MODIFIERKEY_RIGHT_SHIFT;
+                Keyboard.set_modifier(modifiers);
                 Keyboard.send_now(); 
                 continue;
             } else if (s == 0x11 && (state & MODIFIER)) {
-                state2 |= MODIFIERKEY_RIGHT_ALT;
-				Keyboard.set_modifier(state2);
+                modifiers |= MODIFIERKEY_RIGHT_ALT;
+                Keyboard.set_modifier(modifiers);
                 Keyboard.send_now();
             } else if (s == 0x11) {
-                state2 |= MODIFIERKEY_LEFT_ALT;
-                Keyboard.set_modifier(state2);
+                modifiers |= MODIFIERKEY_LEFT_ALT;
+                Keyboard.set_modifier(modifiers);
                 Keyboard.send_now();  
                 continue;
             } else if (s == 0x14 && (state & MODIFIER)) {
-                state2 |= MODIFIERKEY_RIGHT_CTRL;
-				Keyboard.set_modifier(state2);
+                modifiers |= MODIFIERKEY_RIGHT_CTRL;
+                Keyboard.set_modifier(modifiers);
                 Keyboard.send_now();
             } else if (s == 0x14) {
-                state2 |= MODIFIERKEY_LEFT_CTRL;
-                Keyboard.set_modifier(state2);
+                modifiers |= MODIFIERKEY_LEFT_CTRL;
+                Keyboard.set_modifier(modifiers);
                 Keyboard.send_now();  
                 continue;
             } else if (s == 0x1F && (state & MODIFIER)) {
-                state2 |= MODIFIERKEY_LEFT_GUI;
-				Keyboard.set_modifier(state2);
+                modifiers |= MODIFIERKEY_LEFT_GUI;
+                Keyboard.set_modifier(modifiers);
                 Keyboard.send_now();
             } else if (s == 0x27 && (state & MODIFIER)) {
-                state2 |= MODIFIERKEY_RIGHT_GUI;
-				Keyboard.set_modifier(state2);
+                modifiers |= MODIFIERKEY_RIGHT_GUI;
+                Keyboard.set_modifier(modifiers);
                 Keyboard.send_now();
-            }
-            c = 0;
-            /*if (state & MODIFIER) {
-                switch (s) {
-                  case 0x70: c = KEY_INSERT;      break;
-                  case 0x6C: c = KEY_HOME;        break;
-                  case 0x7D: c = KEY_PAGE_UP;     break;
-                  case 0x71: c = KEY_DELETE;      break;
-                  case 0x69: c = KEY_END;         break;
-                  case 0x7A: c = KEY_PAGE_DOWN;   break;
-                  case 0x75: c = KEY_UP;          break;
-                  case 0x6B: c = KEY_LEFT;        break;
-                  case 0x72: c = KEY_DOWN;        break;
-                  case 0x74: c = KEY_RIGHT;       break;
-                  case 0x4A: c = '/';             break;
-                  case 0x5A: c = KEY_ENTER;       break;
-                  default: break;
-                }
-            } else {*/
-                if (s < PS2_KEYMAP_SIZE) {
-                    c = ps2_to_usb_map[s];
-				}
-            //}
-			Serial.print(s);
-			Serial.print("#");
-			Serial.println(c);
-
-			if(c == KEY_U) { //u na ó
-				Keyboard.set_modifier(state2 | MODIFIERKEY_RIGHT_ALT);
-				Keyboard.set_key1(KEY_O);
-				Keyboard.send_now();
-				Keyboard.set_modifier(state2);
-				Keyboard.send_now();
-			} else if(c == KEY_O && (state2 & MODIFIERKEY_RIGHT_ALT)) { //u na ó
-				Keyboard.set_modifier(state2 & ~MODIFIERKEY_RIGHT_ALT);
-				Keyboard.set_key1(KEY_U);
-				Keyboard.send_now();
-				Keyboard.set_modifier(state2);
-				Keyboard.send_now();
-			} else if(prev_c == KEY_R && c == KEY_Z) { //rz na ż
-				Keyboard.set_modifier(0);
-				Keyboard.set_key1(KEY_BACKSPACE);
-				Keyboard.send_now();
-				Keyboard.set_modifier(prev_state2 & (MODIFIERKEY_LEFT_SHIFT | MODIFIERKEY_RIGHT_SHIFT) | MODIFIERKEY_RIGHT_ALT);
-				Keyboard.set_key1(KEY_Z);
-				Keyboard.send_now();
-				Keyboard.set_modifier(state2);
-				Keyboard.send_now();
-			} else if(prev_c == KEY_C && c == KEY_H) { //ch na h
-				Keyboard.set_modifier(0);
-				Keyboard.set_key1(KEY_BACKSPACE);
-				Keyboard.send_now();
-				Keyboard.set_modifier(prev_state2);
-				Keyboard.set_key1(KEY_H);
-				Keyboard.send_now();
-				Keyboard.set_modifier(state2);
-				Keyboard.send_now();
-			} else if(prev_c != KEY_C && c == KEY_H) {// h na ch
-				Keyboard.set_modifier(state2);
-				Keyboard.set_key1(KEY_C);
-				Keyboard.send_now();
-				Keyboard.set_modifier(state2 & ~MODIFIERKEY_RIGHT_SHIFT & ~MODIFIERKEY_LEFT_SHIFT);
-				Keyboard.set_key1(KEY_H);
-				Keyboard.send_now();
-				Keyboard.set_modifier(state2);
-				Keyboard.send_now();
-			} else if(c == KEY_Z && (state2 & MODIFIERKEY_RIGHT_ALT)) { //ż na rz
-				Keyboard.set_modifier(state2 & ~MODIFIERKEY_RIGHT_ALT);
-				Keyboard.set_key1(KEY_R);
-				Keyboard.send_now();
-				Keyboard.set_modifier(state2 & ~MODIFIERKEY_RIGHT_ALT & ~MODIFIERKEY_RIGHT_SHIFT & ~MODIFIERKEY_LEFT_SHIFT);
-				Keyboard.set_key1(KEY_Z);
-				Keyboard.send_now();
-				Keyboard.set_modifier(state2);
-				Keyboard.send_now();
-			} else if(c == KEY_A && (state2 & MODIFIERKEY_RIGHT_ALT)) { // ą na om
-				Keyboard.set_modifier(state2 & ~MODIFIERKEY_RIGHT_ALT);
-				Keyboard.set_key1(KEY_O);
-				Keyboard.send_now();
-				Keyboard.set_modifier(state2 & ~MODIFIERKEY_RIGHT_ALT & ~MODIFIERKEY_RIGHT_SHIFT & ~MODIFIERKEY_LEFT_SHIFT);
-				Keyboard.set_key1(KEY_M);
-				Keyboard.send_now();
-				Keyboard.set_modifier(state2);
-				Keyboard.send_now();
-			} else if(prev_c == KEY_O && c == KEY_M) { //om na ą
-				Keyboard.set_modifier(0);
-				Keyboard.set_key1(KEY_BACKSPACE);
-				Keyboard.send_now();
-				Keyboard.set_modifier(prev_state2 | MODIFIERKEY_RIGHT_ALT);
-				Keyboard.set_key1(KEY_A);
-				Keyboard.send_now();
-				Keyboard.set_modifier(state2);
-				Keyboard.send_now();
-			} else {
-				Keyboard.set_key1(c);
-				Keyboard.send_now();
+            } else if (s == 0x32 && (state & MODIFIER)) { //vol up
+                continue;
+            } else if (s == 0x21 && (state & MODIFIER)) { //vol down
+                continue;
+            } else if (s == 0x6C && (state & MODIFIER)) {
+				Keyboard.press(KEY_HOME);
+				continue;
+			} else if (s == 0x69 && (state & MODIFIER)) {
+				Keyboard.press(KEY_END);
+				continue;
+			} else if (s == 0x7D && (state & MODIFIER)) {
+				Keyboard.press(KEY_PAGE_UP);
+				continue;
+			} else if (s == 0x7A && (state & MODIFIER)) {
+				Keyboard.press(KEY_PAGE_DOWN);
+				continue;
+			} else if (s ==0x75 && (state & MODIFIER)) {
+				Keyboard.press(KEY_UP);
+				continue;
+			} else if (s ==0x6B && (state & MODIFIER)) {
+				Keyboard.press(KEY_LEFT);
+				continue;
+			} else if (s ==0x72 && (state & MODIFIER)) {
+				Keyboard.press(KEY_DOWN);
+				continue;
+			} else if (s ==0x74 && (state & MODIFIER)) {
+				Keyboard.press(KEY_RIGHT);
+				continue;
+			} else if (s == 0x71 && (state & MODIFIER)) {
+				Keyboard.press(KEY_DELETE);
+				continue;
 			}
-			Keyboard.set_key1(0);
-			Keyboard.send_now();
-			
-			prev_c      = c;
-			prev_state2 = state2;
-			
+            c = 0;
+
+			if (s < PS2_KEYMAP_SIZE) {
+				c = ps2_to_usb_map[s];
+			}
+
+			modes[mode](c, modifiers);
+
+            Keyboard.set_key1(0);
+            Keyboard.send_now();
+            
             state &= ~(BREAK | MODIFIER);
             if (c) return c;
         }
@@ -463,10 +653,3 @@ void PS2Keyboard::begin(uint8_t data_pin, uint8_t irq_pin) {
     attachInterrupt(irq_num, ps2interrupt, FALLING);
   }
 }
-
-
-
-
-
-
-
